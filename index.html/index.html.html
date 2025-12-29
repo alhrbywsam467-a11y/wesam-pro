@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>Wesam Pro Editor v5.0</title>
+    <style>
+        /* الحفاظ على التصميم الأصلي */
+        * { box-sizing: border-box; }
+        html, body { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            background: #1e1e1e; color: #d4d4d4; 
+            font-family: 'Segoe UI', sans-serif; overflow: hidden;
+        }
+        .app-container { display: flex; flex-direction: column; width: 100vw; height: 100vh; }
+        .content-area { flex: 1; display: flex; width: 100%; overflow: hidden; }
+
+        /* الشريط الجانبي المطور */
+        .vs-sidebar {
+            width: 50px; background: #333333; border-left: 1px solid #252526;
+            display: flex; flex-direction: column; align-items: center; padding-top: 10px; gap: 15px;
+        }
+        .icon-btn { 
+            width: 35px; height: 35px; background: #444; border-radius: 5px; 
+            cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 10px; color: white;
+        }
+        .icon-btn:hover { background: #007acc; }
+
+        /* نافذة الإعدادات المخفية */
+        #settings-panel {
+            width: 200px; background: #252526; border-left: 1px solid #3c3c3c;
+            display: none; flex-direction: column; padding: 15px; gap: 10px;
+        }
+        #settings-panel h4 { margin: 0 0 10px 0; color: #007acc; font-size: 14px; }
+        select { background: #3c3c3c; color: white; border: 1px solid #555; padding: 5px; cursor: pointer; }
+
+        .editor-workspace { flex: 1; display: flex; width: 100%; }
+        .editor-pane { flex: 1; display: flex; flex-direction: column; border-left: 1px solid #3c3c3c; }
+        .pane-title { background: #2d2d2d; padding: 5px 15px; font-size: 12px; color: #007acc; border-bottom: 1px solid #3c3c3c; display: flex; justify-content: space-between; }
+        
+        textarea {
+            flex: 1; background: #1e1e1e; color: #9cdcfe;
+            padding: 20px; font-family: 'Consolas', monospace;
+            font-size: 18px; border: none; outline: none; resize: none;
+        }
+
+        .preview-pane { flex: 1; background: white; display: flex; flex-direction: column; }
+        iframe { flex: 1; border: none; width: 100%; height: 100%; }
+        #console-output { height: 150px; background: #000; color: #00ff00; padding: 10px; font-family: monospace; display: none; overflow-y: auto; border-top: 2px solid #333; }
+
+        .status-bar { height: 25px; background: #007acc; color: white; font-size: 12px; display: flex; align-items: center; padding: 0 15px; justify-content: space-between; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="content-area">
+            <div class="vs-sidebar">
+                <div class="icon-btn" onclick="toggleSettings()" title="الإعدادات">⚙️</div>
+                <div class="icon-btn" title="الملفات">📁</div>
+                <div class="icon-btn" onclick="changeLang('html')" title="HTML">🌐</div>
+                <div class="icon-btn" onclick="changeLang('python')" title="Python">🐍</div>
+            </div>
+
+            <div id="settings-panel">
+                <h4>الإعدادات</h4>
+                <label style="font-size:12px">حجم الخط:</label>
+                <select onchange="document.getElementById('wesam-code-editor').style.fontSize = this.value">
+                    <option value="14px">صغير</option>
+                    <option value="18px" selected>متوسط</option>
+                    <option value="24px">كبير</option>
+                </select>
+                <label style="font-size:12px">اللغة الحالية:</label>
+                <div id="current-lang-label" style="color: #00ff88; font-size: 12px;">HTML</div>
+            </div>
+
+            <div class="editor-workspace">
+                <div class="editor-pane">
+                    <div class="pane-title">
+                        <span id="file-name">index.html</span>
+                        <span id="lang-badge" style="background:#444; padding:0 5px; border-radius:3px;">HTML</span>
+                    </div>
+                    <textarea id="wesam-code-editor" spellcheck="false"></textarea>
+                    <div id="console-output"></div>
+                </div>
+                <div class="preview-pane">
+                    <div class="pane-title" style="background:#f3f3f3; color:#333;">Live Preview</div>
+                    <iframe id="wesam-result"></iframe>
+                </div>
+            </div>
+        </div>
+        <div class="status-bar">
+            <span>Ready | Wesam Editor Pro v5.0</span>
+            <span id="char-count">Chars: 0</span>
+        </div>
+    </div>
+
+    <script>
+        const input = document.getElementById('wesam-code-editor');
+        const output = document.getElementById('wesam-result');
+        const consoleOut = document.getElementById('console-output');
+        let currentLang = 'html';
+
+        function toggleSettings() {
+            const panel = document.getElementById('settings-panel');
+            panel.style.display = panel.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        function changeLang(lang) {
+            currentLang = lang;
+            document.getElementById('lang-badge').innerText = lang.toUpperCase();
+            document.getElementById('file-name').innerText = lang === 'html' ? 'index.html' : `main.${lang === 'python' ? 'py' : 'js'}`;
+            document.getElementById('current-lang-label').innerText = lang.toUpperCase();
+            
+            if (lang === 'html') {
+                consoleOut.style.display = 'none';
+                output.parentElement.style.display = 'flex';
+            } else {
+                consoleOut.style.display = 'block';
+                output.parentElement.style.display = 'none';
+                consoleOut.innerText = `> ${lang.toUpperCase()} Console Ready...\n`;
+            }
+            update();
+        }
+
+        function update() {
+            const code = input.value;
+            localStorage.setItem('wesam_pro_v5', code);
+            document.getElementById('char-count').innerText = `Chars: ${code.length}`;
+
+            if (currentLang === 'html') {
+                const doc = output.contentWindow.document;
+                doc.open();
+                doc.write(code);
+                doc.close();
+            } else if (currentLang === 'python' || currentLang === 'js') {
+                // محاكي بسيط للغات الأخرى
+                consoleOut.innerText = `> Running ${currentLang}...\n`;
+                if (code.includes('print') || code.includes('console.log')) {
+                    const msg = code.match(/["'](.*?)["']/);
+                    consoleOut.innerText += msg ? msg[1] : "Executed successfully";
+                }
+            }
+        }
+
+        input.addEventListener('input', update);
+
+        window.onload = () => {
+            const saved = localStorage.getItem('wesam_pro_v5');
+            input.value = saved || "\n<h1 style='text-align:center; color:#007acc; font-family:sans-serif;'>Wesam Pro v5.0</h1>";
+            update();
+        };
+    </script>
+</body>
+</html>
